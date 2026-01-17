@@ -1,0 +1,47 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$BUILD_ID",
+        ".",
+      ]
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud auth configure-docker us-central1-docker.pkg.dev -q
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$BUILD_ID",
+      ]
+
+  - name: "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$BUILD_ID"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        python -m pytest
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "py-bq-load"
+      - "--image"
+      - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$BUILD_ID"
+      - "--region"
+      - "us-central1"
+
+images:
+  - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$BUILD_ID"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
