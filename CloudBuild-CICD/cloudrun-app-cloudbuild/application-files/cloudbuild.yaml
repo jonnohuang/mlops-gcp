@@ -42,7 +42,7 @@ steps:
     args:
       - "-c"
       - |
-        python -m pytest
+        python -m pytest -q CloudBuild-CICD/cloudrun-app-cloudbuild/application-files/test_main.py
 
   # 5) Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
