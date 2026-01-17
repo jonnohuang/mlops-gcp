@@ -1,18 +1,19 @@
 steps:
-  # Build (run inside the application-files folder so Dockerfile is found)
+  # 1) Build using explicit Dockerfile path + explicit build context folder
   - name: "gcr.io/cloud-builders/docker"
-    dir: "CloudBuild-CICD/cloudrun-app-cloudbuild/application-files"
     args:
       [
         "build",
+        "-f",
+        "CloudBuild-CICD/cloudrun-app-cloudbuild/application-files/Dockerfile",
         "-t",
         "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA",
         "-t",
         "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:latest",
-        ".",
+        "CloudBuild-CICD/cloudrun-app-cloudbuild/application-files",
       ]
 
-  # Configure Docker auth for Artifact Registry
+  # 2) Configure Docker auth for Artifact Registry
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "bash"
     args:
@@ -20,7 +21,7 @@ steps:
       - |
         gcloud auth configure-docker us-central1-docker.pkg.dev -q
 
-  # Push commit tag + latest
+  # 3) Push commit tag + latest
   - name: "gcr.io/cloud-builders/docker"
     args:
       [
@@ -35,7 +36,7 @@ steps:
         "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:latest",
       ]
 
-  # Run unit tests inside the built image
+  # 4) Run unit tests inside the built image
   - name: "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
     entrypoint: "bash"
     args:
@@ -43,7 +44,7 @@ steps:
       - |
         python -m pytest
 
-  # Deploy to Cloud Run
+  # 5) Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
     entrypoint: "gcloud"
     args:
@@ -54,7 +55,6 @@ steps:
       - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
       - "--region"
       - "us-central1"
-      - "--allow-unauthenticated"
 
 images:
   - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
