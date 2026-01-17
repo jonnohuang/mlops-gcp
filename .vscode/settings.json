@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "/opt/miniconda3/envs/mlops-gcp-dev/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "workbench.editor.enablePreview": false
+}
