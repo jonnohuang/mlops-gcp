@@ -1,0 +1,13 @@
+__pycache__
+.pytest_cache
+.venv
+venv
+.ipynb_checkpoints
+__MACOSX
+.DS_Store
+.git
+.gitignore
+tests
+training
+docs
+scripts
