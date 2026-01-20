@@ -1,44 +1,93 @@
-# MLOps on GCP (mlops-gcp)
+# MLOps on Google Cloud — Portfolio-First Monorepo
 
-Course-driven implementation of an end-to-end MLOps workflow on Google Cloud Platform.
+This repository is a **portfolio-first MLOps monorepo on Google Cloud**, created by completing and then **modernizing a full MLOps course curriculum into production-minded projects**.
 
-## Goals
-- Build reproducible training + inference pipelines
-- Containerize workloads with Docker
-- Deploy to GCP services (e.g., Cloud Run / Vertex AI)
-- CI/CD Using Cloud Build,Container and Artifact Registry
-- Continuous Training using Airflow for ML Workflow Orchestration:
-- Writing Test Cases
-- Vertex AI Ecosystem using Python
-- Kubeflow Pipelines for ML Workflow and reusable ML components
-- Deploy Useful Applications using PaLM LLM of GCP Generative AI 
-
-## How to Run (Local)
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+Rather than treating the course as the end goal, I use it as raw material to:
+- modernize legacy labs for current GCP defaults
+- introduce proper CI/CD separation (PR vs deploy)
+- apply Cloud Run and Artifact Registry best practices
+- curate selected labs into **ML infrastructure–quality portfolio projects**
 
 ---
 
-## Portfolio-first workflow (recommended)
+## 🎯 Target roles
 
-- `main`: portfolio-ready, stable, deployable
-- `dev`: course work in progress
+- **Google Cloud ML Infrastructure Engineer**
+- **Machine Learning Engineer (Platform / Serving / Pipelines)**
 
-### Common GCP config
-See `env.common.sh`.
+---
 
-### One-time IAM bootstrap
-```bash
-bash scripts/bootstrap_iam.sh
-```
+## 🔑 What this repository demonstrates
 
-### Deploy any lab manually (works from dev)
-```bash
-bash scripts/deploy_lab.sh Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations
-```
+- Cloud Run model serving
+- CI/CD with Cloud Build (PR validation + branch-based deployment)
+- Artifact Registry image management
+- Progressive refactoring from *course lab* → *portfolio-quality service*
+- Local reproducibility on macOS Apple Silicon (M2) using conda + Docker
+- End-to-end ML lifecycle awareness (training → serving → orchestration)
 
-### Triggers for dev vs main
-See `docs/TRIGGERS_DEV_MAIN.md` and `scripts/create_trigger_cloudrun.sh`.
+---
+
+## ⭐ Start here (featured portfolio projects)
+
+### Coupon Recommendation ML Service — Portfolio version
+**Path:**  
+`Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations-v2/`
+
+Highlights:
+- production-style structure (`src/`, `tests/`, `scripts`, configuration)
+- health endpoints for Cloud Run
+- Cloud Build build → push → deploy pipeline
+- deployable on Google Cloud Run
+
+### Coupon Recommendation — Course reference + CI/CD split
+**Path:**  
+`Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations/`
+
+Kept intentionally for learning fidelity and to show evolution.
+Includes separate CI and CD configurations:
+- `cloudbuild.pr.yaml` — build and test only
+- `cloudbuild.deploy.yaml` — build, push, and deploy
+
+---
+
+## 🗂 Repository layout (high level)
+
+- `Section3-CloudBuild-CICD/` — Cloud Run, Cloud Build, and ML model serving (most portfolio-relevant)
+- `Section4-ContinuousTraining-Airflow-Composer/` — continuous training and orchestration
+- `Section5-7-VertexAI-Development/` — Vertex AI training, batch prediction, explainability
+- `Section6-Kubeflow-Pipelines/` — experiments and pipelines
+- `Section7-Feature-Store/` — feature store examples
+- `Section8-GenAI/` — supplementary GenAI labs
+- `docs/` — setup, workflows, and CI/CD strategy
+- `scripts/` — reusable infrastructure helpers
+- `archive/` — preserved pre-modernization snapshots
+
+---
+
+## 🔁 Portfolio-first workflow (high level)
+
+- `dev` — course work, refactors, experiments, frequent deployments
+- `main` — curated, stable, portfolio-ready implementations only
+
+CI/CD is structured to support:
+- PR validation (build + test only)
+- branch-based deployment for `dev` and `main`
+
+---
+
+## 📄 Documentation
+
+Detailed setup and workflows are documented separately:
+
+- GCP project & IAM setup: `docs/SETUP_GCP.md`
+- Local development (macOS M2): `docs/LOCAL_MAC_M2.md`
+- Progressive lab workflow: `docs/PROGRESSIVE_LABS.md`
+- CI/CD trigger strategy: `docs/TRIGGERS_DEV_MAIN.md`
+
+---
+
+## ⚠️ Disclaimer
+
+This repository builds on publicly available course material for educational purposes.
+Refactored implementations reflect independent engineering decisions and modernization work.
