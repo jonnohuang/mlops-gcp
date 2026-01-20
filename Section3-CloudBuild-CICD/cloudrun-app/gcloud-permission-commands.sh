@@ -1,8 +1,17 @@
-gcloud builds submit --region us-central1
+#!/usr/bin/env bash
+set -euo pipefail
 
-  # Assign the roles 
-  gcloud projects add-iam-policy-binding gcp-serverless-project-374110 \
-  --member=serviceAccount:131640033627@cloudbuild.gserviceaccount.com --role=roles/iam.serviceAccountUser
+# Wrapper kept for course compatibility.
+# Canonical IAM bootstrap lives at repo root: scripts/bootstrap_iam.sh
 
-  gcloud projects add-iam-policy-binding gcp-serverless-project-374110 \
-  --member=serviceAccount:131640033627@cloudbuild.gserviceaccount.com --role=roles/run.admin
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+while [[ "$DIR" != "/" && ! -f "$DIR/env.common.sh" ]]; do
+  DIR="$(dirname "$DIR")"
+done
+
+if [[ ! -f "$DIR/env.common.sh" ]]; then
+  echo "ERROR: Could not find env.common.sh in parent directories."
+  exit 1
+fi
+
+bash "$DIR/scripts/bootstrap_iam.sh"
