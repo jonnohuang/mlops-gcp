@@ -1,0 +1,24 @@
+substitutions:
+  _PYTHON_VERSION: "3.11"
+
+steps:
+  - name: "python:${_PYTHON_VERSION}"
+    id: "Unit tests"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        pip install -r requirements.txt
+        pytest -q
+
+  # Optional: ensure Dockerfile still builds (no push)
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image (no push)"
+    args:
+      - "build"
+      - "-t"
+      - "pr-check-image"
+      - "."
+
+options:
+  logging: CLOUD_LOGGING_ONLY
