@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MacOS
+.DS_Store
+._*
+
+# Model artifacts
+*.pkl
+*.joblib
+
+# Env
+.env

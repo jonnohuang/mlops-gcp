@@ -8,21 +8,30 @@
 .Trashes
 
 # ======================
-# VS Code
+# Temp files
+# ======================
+~$*
+*~
+*.swp
+
+# ======================
+# VS Code / Devcontainers
 # ======================
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/launch.json
 !.vscode/tasks.json
+!.vscode/snippets.code-snippets
+!.vscode/*.code-snippets
+!.vscode/devcontainer.json
+!.devcontainer/
 
 # ======================
 # Python
 # ======================
 __pycache__/
 *.py[cod]
-*.pyd
-*.so
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -32,6 +41,9 @@ pip-wheel-metadata/
 *.egg-info/
 dist/
 build/
+.pyre/
+.ipynb_checkpoints/
+*.ipynb~
 
 # Virtual envs
 .venv/
@@ -39,18 +51,17 @@ venv/
 env/
 ENV/
 
-# Jupyter
-.ipynb_checkpoints/
+# pyenv
+.python-version
 
 # ======================
 # Logs / temp
 # ======================
 *.log
 *.tmp
-*.swp
 
 # ======================
-# Terraform (if you use it)
+# Terraform
 # ======================
 .terraform/
 *.tfstate
@@ -64,9 +75,8 @@ override.tf.json
 terraform.rc
 
 # ======================
-# GCP / credentials / secrets (IMPORTANT)
+# GCP / credentials / secrets
 # ======================
-# Never commit credentials
 *.pem
 *.key
 *.p12
@@ -75,13 +85,13 @@ terraform.rc
 *service_account*.json
 *credentials*.json
 *adc*.json
+application_default_credentials.json
 
-# Common env files
 .env
 .env.*
 !.env.example
+**/.envrc
 
-# gcloud local config (usually should not be committed)
 .gcloud/
 .gsutil/
 
@@ -89,5 +99,5 @@ terraform.rc
 # Docker / local build artifacts
 # ======================
 **/.docker/
-**/tmp/
-**/out/
+/tmp/
+/out/

@@ -1,0 +1,52 @@
+substitutions:
+  _REGION: "us-central1"
+  _AR_REPO: "python-apps"
+  _IMAGE: "bikeshare-model"
+  _SERVICE: "bikeshare-model"
+
+steps:
+  - name: "python:3.11"
+    id: "Unit tests"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        pip install -r assignment-solution/requirements.txt 2>/dev/null || true
+        pytest -q assignment-solution/test_main.py 2>/dev/null || true
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image"
+    args:
+      - "build"
+      - "-f"
+      - "assignment-solution/Dockerfile"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Deploy to Cloud Run"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "--region"
+      - "${_REGION}"
+      - "--allow-unauthenticated"
+      - "--service-account"
+      - "${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

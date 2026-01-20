@@ -1,0 +1,49 @@
+substitutions:
+  _REGION: "us-central1"
+  _AR_REPO: "python-apps"
+  _IMAGE: "advertising-roi-training"
+  # Optional: Composer DAG bucket (set at trigger time or edit here)
+  _DAGS_GCS_PREFIX: ""  # e.g., gs://us-central1-<composer-env>-bucket/dags
+
+steps:
+  - name: "python:3.11"
+    id: "Unit tests"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        pip install -r requirements.txt
+        pytest -q
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+  - name: "gcr.io/cloud-builders/gsutil"
+    id: "(Optional) Upload DAG to Composer bucket"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        if [[ -n "${_DAGS_GCS_PREFIX}" ]]; then
+          echo "Uploading DAG to ${_DAGS_GCS_PREFIX}";
+          gsutil cp ../dag-advertisiting-roi.py "${_DAGS_GCS_PREFIX}/";
+        else
+          echo "_DAGS_GCS_PREFIX is empty; skipping DAG upload.";
+        fi
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

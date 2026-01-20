@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+._*
+__MACOSX/
+
+# Env
+.env
+
+# Large artifacts (recommended to keep out of Git)
+*.pkl
+*.joblib

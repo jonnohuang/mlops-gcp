@@ -1,0 +1,112 @@
+substitutions:
+  _REGION: "us-central1"
+  _AR_REPO: "python-apps"
+  _IMAGE: "vertex-bikeshare-training"
+  _TRAINING_JOB_DISPLAY_NAME: "bikeshare-model-training"
+  _MODEL_DISPLAY_NAME: "bikeshare-model"
+  _ENDPOINT_DISPLAY_NAME: "bikeshare-endpoint"
+  # Set this to the GCS folder where your training job writes model artifacts
+  _ARTIFACT_URI: ""  # e.g., gs://<your-bucket>/vertex/bikeshare/artifacts/
+  # Prediction serving container (Vertex managed prediction)
+  _PREDICTION_CONTAINER: "us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest"
+
+steps:
+  - name: "python:3.11"
+    id: "Unit tests"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        pip install -r requirements.txt
+        pytest -q test-training.py
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build training image"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push training image"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Submit Vertex AI custom training job"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        gcloud ai custom-jobs create \
+          --region="${_REGION}" \
+          --display-name="${_TRAINING_JOB_DISPLAY_NAME}" \
+          --worker-pool-spec=replica-count=1,machine-type=n1-standard-4,container-image-uri=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Upload model to Vertex Model Registry"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        if [[ -z "${_ARTIFACT_URI}" ]]; then
+          echo "ERROR: _ARTIFACT_URI is empty. Set it to your GCS artifact folder (e.g. gs://bucket/path/).";
+          exit 1
+        fi
+
+        MODEL_NAME=$(gcloud ai models upload \
+          --region="${_REGION}" \
+          --display-name="${_MODEL_DISPLAY_NAME}" \
+          --artifact-uri="${_ARTIFACT_URI}" \
+          --container-image-uri="${_PREDICTION_CONTAINER}" \
+          --format="value(name)")
+
+        echo "$MODEL_NAME" > /workspace/model_name.txt
+        echo "Uploaded model: $MODEL_NAME"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Create or reuse endpoint"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        ENDPOINT=$(gcloud ai endpoints list \
+          --region="${_REGION}" \
+          --filter="displayName=${_ENDPOINT_DISPLAY_NAME}" \
+          --format="value(name)" \
+          --limit=1 || true)
+
+        if [[ -z "$ENDPOINT" ]]; then
+          ENDPOINT=$(gcloud ai endpoints create \
+            --region="${_REGION}" \
+            --display-name="${_ENDPOINT_DISPLAY_NAME}" \
+            --format="value(name)")
+        fi
+
+        echo "$ENDPOINT" > /workspace/endpoint_name.txt
+        echo "Using endpoint: $ENDPOINT"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "Deploy model to endpoint"
+    entrypoint: "bash"
+    args:
+      - "-ceu"
+      - |
+        ENDPOINT=$(cat /workspace/endpoint_name.txt)
+        MODEL=$(cat /workspace/model_name.txt)
+
+        # Deploy a new model version; set traffic split so new deployment gets 100%
+        gcloud ai endpoints deploy-model "$ENDPOINT" \
+          --region="${_REGION}" \
+          --model="$MODEL" \
+          --display-name="${_MODEL_DISPLAY_NAME}-deployed" \
+          --machine-type="n1-standard-4" \
+          --traffic-split=0=100
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

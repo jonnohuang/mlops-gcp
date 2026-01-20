@@ -1,0 +1,64 @@
+steps:
+  # 1) Build using explicit Dockerfile path + explicit build context folder
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-f",
+        "CloudBuild-CICD/cloudrun-app-cloudbuild/application-files/Dockerfile",
+        "-t",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA",
+        "-t",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:latest",
+        "CloudBuild-CICD/cloudrun-app-cloudbuild/application-files",
+      ]
+
+  # 2) Configure Docker auth for Artifact Registry
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud auth configure-docker us-central1-docker.pkg.dev -q
+
+  # 3) Push commit tag + latest
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA",
+      ]
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:latest",
+      ]
+
+  # 4) Run unit tests inside the built image
+  - name: "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        python -m pytest -q CloudBuild-CICD/cloudrun-app-cloudbuild/application-files/test_main.py
+
+  # 5) Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "py-bq-load"
+      - "--image"
+      - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
+      - "--region"
+      - "us-central1"
+
+images:
+  - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:$COMMIT_SHA"
+  - "us-central1-docker.pkg.dev/ml-ops-on-gcp/python-apps/demo-flask-app:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,1 @@
+"""Coupon recommendation inference service."""
