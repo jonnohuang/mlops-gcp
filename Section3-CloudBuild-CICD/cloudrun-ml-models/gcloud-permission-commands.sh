@@ -1,13 +1,17 @@
-# Assign Service account user role to the service account 
-gcloud projects add-iam-policy-binding udemy-mlops \
---member=serviceAccount:1090925531874@cloudbuild.gserviceaccount.com --role=storage.buckets.get
+#!/usr/bin/env bash
+set -euo pipefail
 
+# Wrapper kept for course compatibility.
+# Canonical IAM bootstrap lives at repo root: scripts/bootstrap_iam.sh
 
-# Assign Cloud Run role to the service account 
-gcloud projects add-iam-policy-binding udemy-mlops \
-  --member=serviceAccount:1090925531874@cloudbuild.gserviceaccount.com --role=roles/run.admin
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+while [[ "$DIR" != "/" && ! -f "$DIR/env.common.sh" ]]; do
+  DIR="$(dirname "$DIR")"
+done
 
-# Command to run the build using cloudbuild.yaml
-gcloud builds submit --region us-central1
+if [[ ! -f "$DIR/env.common.sh" ]]; then
+  echo "ERROR: Could not find env.common.sh in parent directories."
+  exit 1
+fi
 
-
+bash "$DIR/scripts/bootstrap_iam.sh"
