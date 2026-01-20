@@ -1,84 +1,157 @@
-# GCP Project & IAM Setup
+GCP SETUP GUIDE (ONE-TIME)
 
-This document describes the one-time Google Cloud setup required to run the labs
-and CI/CD pipelines in this repository.
+This document covers the one-time Google Cloud setup to run and deploy labs in this repository.
+It supports Cloud Run, Cloud Build (CI/CD), Artifact Registry, and optional Vertex AI / Composer labs.
 
-Operational setup details are intentionally separated from the root README to keep
-the repository portfolio-focused and reviewer-friendly.
+================================================================
+FAST PATH (MOST USERS)
 
-============================================================
-Required APIs
-============================================================
+Run the following from the repo root:
 
-Ensure the following APIs are enabled in the GCP project:
+source env.common.sh
+gcloud config set project "$PROJECT_ID"
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com iam.googleapis.com
+bash scripts/bootstrap_iam.sh
+gcloud auth configure-docker "${REGION}-docker.pkg.dev"
 
-- Cloud Build
-- Cloud Run
-- Artifact Registry
-- IAM
+If you will run Vertex AI labs later:
 
-Optional (required only for specific sections or labs):
+gcloud services enable aiplatform.googleapis.com
 
-- Vertex AI
-- Cloud Composer
+If you will run Composer labs:
 
+gcloud services enable composer.googleapis.com
 
-============================================================
-IAM Bootstrap (One-Time Setup)
-============================================================
+================================================================
+COMMON PROJECT CONFIGURATION
 
-A helper script is provided to grant the minimum required IAM roles to the service
-accounts used by Cloud Build and Cloud Run.
+All labs assume the following values defined in env.common.sh:
+
+PROJECT_ID="ml-ops-on-gcp"
+PROJECT_NUMBER="79824532858"
+REGION="us-central1"
+
+CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com
+"
+
+================================================================
+LOCAL PREREQUISITES (macOS)
+
+Required tools:
+
+Google Cloud CLI (gcloud)
+
+Docker Desktop
+
+Git
+
+Verify installations:
+
+gcloud version
+docker version
+git --version
+
+================================================================
+AUTHENTICATE WITH GCP
+
+Login:
+
+gcloud auth login
+
+Set application default credentials (for local runs):
+
+gcloud auth application-default login
+
+Set default project and region:
+
+gcloud config set project "$PROJECT_ID"
+gcloud config set run/region "$REGION"
+
+================================================================
+ENABLE REQUIRED APIS
+
+Required for Section 3 (Cloud Run + Cloud Build):
+
+gcloud services enable
+run.googleapis.com
+cloudbuild.googleapis.com
+artifactregistry.googleapis.com
+iam.googleapis.com
+
+Optional APIs:
+
+gcloud services enable aiplatform.googleapis.com (Vertex AI, Section 5–7)
+gcloud services enable composer.googleapis.com (Composer, Section 4)
+
+================================================================
+IAM BOOTSTRAP (RECOMMENDED)
+
+All IAM bindings are centralized in one script:
+
+scripts/bootstrap_iam.sh
 
 Run once per project:
 
-    bash scripts/bootstrap_iam.sh
+bash scripts/bootstrap_iam.sh
 
-This script assigns permissions required for:
+Notes:
 
-- building and pushing container images
-- deploying Cloud Run services
-- accessing Artifact Registry
+Older labs may include gcloud-permission-commands.sh files.
 
+In this repo, those scripts are wrappers that delegate to bootstrap_iam.sh.
 
-============================================================
-Common Project Configuration
-============================================================
+================================================================
+ARTIFACT REGISTRY SETUP
 
-All labs in this repository assume the following base configuration, defined in
-`env.common.sh`:
+Create the Artifact Registry repository if it does not exist
+(example repository name: python-apps):
 
-    PROJECT_ID="ml-ops-on-gcp"
-    PROJECT_NUMBER="79824532858"
-    REGION="us-central1"
+gcloud artifacts repositories create python-apps
+--repository-format=docker
+--location="$REGION"
+--description="Docker images for Cloud Run ML services" || true
 
-    CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
-    RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+Configure Docker authentication:
 
+gcloud auth configure-docker "${REGION}-docker.pkg.dev"
 
-============================================================
-Notes
-============================================================
+================================================================
+VERIFY SETUP
 
-- IAM configuration is intentionally centralized to avoid repeating permissions
-  across individual labs.
-- Individual lab folders may include an `env.project.sh` file to define service
-  names and Artifact Registry repositories.
-- No additional manual IAM configuration is required after this step unless new
-  GCP services are introduced.
+Manual deploy test (example):
 
+bash scripts/deploy_lab.sh Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations-v2
 
-============================================================
-Troubleshooting
-============================================================
+List Cloud Run services:
 
-If you encounter permission-related errors:
+gcloud run services list --region "$REGION"
 
-1. Confirm you are authenticated with the correct GCP account.
-2. Verify the active project is set correctly:
+================================================================
+TROUBLESHOOTING
 
-       gcloud config set project ml-ops-on-gcp
+If you encounter permission or deployment errors:
 
-3. Re-run the IAM bootstrap script:
+Confirm the active project:
+gcloud config set project "$PROJECT_ID"
 
-       bash scripts/bootstrap_iam.sh
+Re-run IAM bootstrap:
+bash scripts/bootstrap_iam.sh
+
+For Apple Silicon Docker issues:
+See docs/LOCAL_MAC_M2.md
+
+================================================================
+SUMMARY
+
+After completing this setup, you should be able to:
+
+Run services locally
+
+Build and test Docker images
+
+Deploy via Cloud Build
+
+Maintain dev vs main deployments safely
+
+This setup reflects real-world MLOps infrastructure rather than course-only demos.
