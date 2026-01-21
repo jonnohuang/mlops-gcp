@@ -4,7 +4,7 @@ This repository is a **portfolio-first MLOps monorepo on Google Cloud**, created
 
 Rather than treating the course as the end goal, I use it as raw material to:
 - modernize legacy labs for current GCP defaults
-- introduce proper CI/CD separation (PR vs deploy)
+- introduce proper CI/CD separation (PR validation vs environment deployment)
 - apply Cloud Run and Artifact Registry best practices
 - curate selected labs into **ML infrastructure–quality portfolio projects**
 
@@ -26,11 +26,13 @@ Rather than treating the course as the end goal, I use it as raw material to:
 - Local reproducibility on macOS Apple Silicon (M2) using conda + Docker
 - End-to-end ML lifecycle awareness (training → serving → orchestration)
 
+Emphasis is placed on **deployability, reproducibility, and operational correctness**, not just model accuracy.
+
 ---
 
 ## ⭐ Start here (featured portfolio projects)
 
-### Coupon Recommendation ML Service — Portfolio version
+### Coupon Recommendation ML Service — **Primary portfolio artifact**
 **Path:**  
 `Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations-v2/`
 
@@ -38,7 +40,7 @@ Highlights:
 - production-style structure (`src/`, `tests/`, `scripts`, configuration)
 - health endpoints for Cloud Run
 - Cloud Build build → push → deploy pipeline
-- deployable on Google Cloud Run
+- continuously deployable to Google Cloud Run
 
 ### Coupon Recommendation — Course reference + CI/CD split
 **Path:**  
