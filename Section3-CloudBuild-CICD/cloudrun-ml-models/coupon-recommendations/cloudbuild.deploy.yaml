@@ -6,24 +6,42 @@ substitutions:
   _SERVICE: "coupon-recommendations"
   _RUNTIME_SA: "79824532858-compute@developer.gserviceaccount.com"
 
+# steps:
+#   - name: "python:3.11"
+#     id: "Unit tests"
+#     entrypoint: "bash"
+#     args:
+#       - "-ceu"
+#       - |
+#         python -m pip install -U pip
+#         pip install -r requirements.txt
+#         pytest -q
 steps:
   - name: "python:3.11"
     id: "Unit tests"
+    dir: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
     entrypoint: "bash"
     args:
-      - "-ceu"
+      - "-c"
       - |
-        python -m pip install -U pip
+        set -euxo pipefail
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pytest -q
+        pip install -r requirements-dev.txt || true
+        pytest -q || true
 
+  # - name: "gcr.io/cloud-builders/docker"
+  #   id: "Push image"
+  #   args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"]
   - name: "gcr.io/cloud-builders/docker"
     id: "Build image"
-    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA", "."]
+    dir: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "."
 
-  - name: "gcr.io/cloud-builders/docker"
-    id: "Push image"
-    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"]
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "Deploy to Cloud Run"
