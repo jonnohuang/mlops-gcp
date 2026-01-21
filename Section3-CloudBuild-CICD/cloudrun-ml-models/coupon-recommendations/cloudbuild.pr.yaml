@@ -1,5 +1,6 @@
 substitutions:
   _PYTHON_VERSION: "3.11"
+  _LAB_DIR: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
 
 steps:
   - name: "python:${_PYTHON_VERSION}"

@@ -1,4 +1,5 @@
 substitutions:
+  _LAB_DIR: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
   _REGION: "us-central1"
   _AR_REPO: "python-apps"
   _IMAGE: "coupon-reco"
