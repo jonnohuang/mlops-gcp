@@ -7,3 +7,5 @@ export REGION="us-central1"
 
 export CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 export RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+export CLOUDBUILD_SA_RESOURCE="projects/${PROJECT_ID}/serviceAccounts/${CLOUDBUILD_SA}"
+
