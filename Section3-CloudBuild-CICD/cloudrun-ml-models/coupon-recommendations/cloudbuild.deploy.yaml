@@ -5,21 +5,13 @@ substitutions:
   _IMAGE: "coupon-reco"
   _SERVICE: "coupon-recommendations"
   _RUNTIME_SA: "79824532858-compute@developer.gserviceaccount.com"
+  _MODEL_GCS_BUCKET: "ml-ops-on-gcp-data"
+  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.pkl"
 
-# steps:
-#   - name: "python:3.11"
-#     id: "Unit tests"
-#     entrypoint: "bash"
-#     args:
-#       - "-ceu"
-#       - |
-#         python -m pip install -U pip
-#         pip install -r requirements.txt
-#         pytest -q
 steps:
   - name: "python:3.11"
-    id: "Unit tests"
-    dir: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
+    id: "Unit tests (load model from GCS)"
+    dir: "${_LAB_DIR}"
     entrypoint: "bash"
     args:
       - "-c"
@@ -27,21 +19,24 @@ steps:
         set -euxo pipefail
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt || true
-        pytest -q || true
+        export MODEL_GCS_BUCKET="${_MODEL_GCS_BUCKET}"
+        export MODEL_GCS_BLOB="${_MODEL_GCS_BLOB}"
+        pytest -q
 
-  # - name: "gcr.io/cloud-builders/docker"
-  #   id: "Push image"
-  #   args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"]
   - name: "gcr.io/cloud-builders/docker"
     id: "Build image"
-    dir: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
+    dir: "${_LAB_DIR}"
     args:
       - "build"
       - "-t"
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
       - "."
 
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "Deploy to Cloud Run"
@@ -50,6 +45,7 @@ steps:
       - "run"
       - "deploy"
       - "${_SERVICE}"
+      - "--quiet"
       - "--image"
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
       - "--region"
@@ -59,6 +55,8 @@ steps:
       - "--allow-unauthenticated"
       - "--service-account"
       - "${_RUNTIME_SA}"
+      - "--set-env-vars"
+      - "MODEL_GCS_BUCKET=${_MODEL_GCS_BUCKET},MODEL_GCS_BLOB=${_MODEL_GCS_BLOB}"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"

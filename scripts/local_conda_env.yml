@@ -3,6 +3,20 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
+  - numpy
+  - pandas
+  - scikit-learn
+  - pyarrow
+  - scipy
+  - xgboost
   - pip
   - pip:
-      - -r requirements-dev.txt
+      - Flask>=3.0,<4.0
+      - Werkzeug>=3.0,<4.0
+      - gunicorn>=21.2,<22
+      - pytest>=8,<9
+      - category_encoders
+      - imbalanced-learn
+      - requests
+      - google-cloud-storage
+      - google-cloud-bigquery

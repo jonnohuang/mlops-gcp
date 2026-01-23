@@ -1,3 +1,12 @@
+# Grants required for:
+# - Cloud Build: build, push, and run CI tests that load ML model from GCS
+# - Cloud Run: runtime access to ML model stored in GCS
+
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+  echo "This script should not be sourced."
+  return 1
+fi
+
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -19,5 +28,15 @@ echo "Allow Cloud Build to actAs runtime service account"
 gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
   --member="serviceAccount:${CLOUDBUILD_SA}" \
   --role="roles/iam.serviceAccountUser"
+
+echo "Grant Cloud Run runtime SA read access to model bucket (GCS)"
+gcloud storage buckets add-iam-policy-binding "gs://${MODEL_GCS_BUCKET}" \
+  --member="serviceAccount:${RUNTIME_SA}" \
+  --role="roles/storage.objectViewer"
+
+echo "Grant Cloud Build SA read access to model bucket (GCS) for CI tests"
+gcloud storage buckets add-iam-policy-binding "gs://${MODEL_GCS_BUCKET}" \
+  --member="serviceAccount:${CLOUDBUILD_SA}" \
+  --role="roles/storage.objectViewer"
 
 echo "Done."

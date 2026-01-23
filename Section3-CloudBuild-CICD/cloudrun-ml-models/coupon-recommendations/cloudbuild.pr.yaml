@@ -1,21 +1,13 @@
 substitutions:
   _PYTHON_VERSION: "3.11"
   _LAB_DIR: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
+  _MODEL_GCS_BUCKET: "ml-ops-on-gcp-data"
+  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.pkl"
 
-# steps:
-#   - name: "python:${_PYTHON_VERSION}"
-#     id: "Unit tests"
-#     entrypoint: "bash"
-#     args:
-#       - "-ceu"
-#       - |
-#         python -m pip install -U pip
-#         pip install -r requirements.txt
-#         pytest -q
 steps:
-  - name: "python:3.11"
-    id: "Unit tests"
-    dir: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
+  - name: "python:${_PYTHON_VERSION}"
+    id: "Unit tests (load model from GCS)"
+    dir: "${_LAB_DIR}"
     entrypoint: "bash"
     args:
       - "-c"
@@ -23,12 +15,15 @@ steps:
         set -euxo pipefail
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt || true
-        pytest -q || true
 
-  # Optional: ensure Dockerfile still builds (no push)
+        export MODEL_GCS_BUCKET="${_MODEL_GCS_BUCKET}"
+        export MODEL_GCS_BLOB="${_MODEL_GCS_BLOB}"
+
+        pytest -q
+
   - name: "gcr.io/cloud-builders/docker"
     id: "Build image (no push)"
+    dir: "${_LAB_DIR}"
     args:
       - "build"
       - "-t"

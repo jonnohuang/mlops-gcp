@@ -15,3 +15,9 @@ set -euo pipefail
 #
 # If you do NOT need strict parity, plain docker build works too:
 #   docker build -t local:test .
+conda env create -f local_conda_env.yml
+conda activate mlops-gcp
+
+docker build -t coupon-reco:local .
+docker run --rm -p 8080:8080 -e PORT=8080 coupon-reco:local
+
