@@ -10,13 +10,12 @@ set -euo pipefail
 #   service=coupon-recommendations \
 #   ar_repo=python-apps \
 #   image=coupon-reco
-#
-# Note: REPO_NAME and CONNECTION_NAME are pulled from env.common.sh
 # ==============================================================================
 
+# Automatically load project variables
 source "$(dirname "$0")/../env.common.sh"
 
-# Parse key=value args
+# Parse key=value args from command line
 for arg in "$@"; do
   case "$arg" in
     *=*) export "${arg}" ;;
@@ -24,7 +23,7 @@ for arg in "$@"; do
   esac
 done
 
-# Validation
+# Validate required arguments
 : "${name_base:?missing name_base}"
 : "${lab_dir:?missing lab_dir}"
 : "${service:?missing service}"
@@ -33,32 +32,23 @@ done
 
 pr_target="${pr_target:-main}"
 
-# 2nd Gen Repository Resource Path
+# Construct 2nd Gen Resource Paths (Required for API consistency)
 REPO_RESOURCE="projects/$PROJECT_ID/locations/$REGION/connections/$CONNECTION_NAME/repositories/$REPO_NAME"
+CB_SA_RESOURCE="projects/$PROJECT_ID/serviceAccounts/$CLOUDBUILD_SA"
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 
 DEPLOY_YAML="$lab_dir/cloudbuild.deploy.yaml"
 PR_YAML="$lab_dir/cloudbuild.pr.yaml"
-FALLBACK_YAML="$lab_dir/cloudbuild.yaml"
 
-# Determine which build config to use
-if [[ -f "$DEPLOY_YAML" ]]; then
-  build_yaml="$DEPLOY_YAML"
-elif [[ -f "$FALLBACK_YAML" ]]; then
-  build_yaml="$FALLBACK_YAML"
-else
-  echo "ERROR: No cloudbuild yaml found in $lab_dir"
-  exit 1
-fi
-
+# Shared substitutions
 COMMON_SUBS="_REGION=${REGION},_AR_REPO=${ar_repo},_IMAGE=${image}"
 
-# Helper to delete existing regional trigger
 delete_trigger_if_exists() {
   local trig_name="$1"
+  # 2nd Gen triggers are regional, so we must check within the region
   if gcloud builds triggers describe "$trig_name" --region="$REGION" &>/dev/null; then
-    echo "Deleting existing trigger '$trig_name' in $REGION..."
+    echo "Deleting existing trigger '$trig_name'..."
     gcloud builds triggers delete "$trig_name" --region="$REGION" --quiet
   fi
 }
@@ -70,15 +60,16 @@ create_push_trigger() {
 
   delete_trigger_if_exists "$trig_name"
 
-  echo "Creating Push Trigger: $trig_name (2nd Gen)"
+  echo "Creating Push Trigger: $trig_name"
+  # Using 'github' command with '--repository' flag is the stable 2nd Gen path
   gcloud builds triggers create github \
     --name="$trig_name" \
     --region="$REGION" \
     --repository="$REPO_RESOURCE" \
     --branch-pattern="$branch_regex" \
-    --build-config="$build_yaml" \
-    --service-account="projects/$PROJECT_ID/serviceAccounts/$CLOUDBUILD_SA" \
-    --substitutions="${COMMON_SUBS},_SERVICE=${svc}"
+    --build-config="$DEPLOY_YAML" \
+    --service-account="$CB_SA_RESOURCE" \
+    --substitutions="${COMMON_SUBS},_SERVICE=${svc},_RUNTIME_SA=${RUNTIME_SA},_MODEL_GCS_BUCKET=${MODEL_GCS_BUCKET},_MODEL_GCS_BLOB=${MODEL_GCS_BLOB}"
 }
 
 create_pr_trigger() {
@@ -87,20 +78,20 @@ create_pr_trigger() {
 
   delete_trigger_if_exists "$trig_name"
 
-  echo "Creating PR Trigger: $trig_name (2nd Gen)"
+  echo "Creating PR Trigger: $trig_name"
   gcloud builds triggers create github \
     --name="$trig_name" \
     --region="$REGION" \
     --repository="$REPO_RESOURCE" \
     --pull-request-pattern="^${pr_target}$" \
     --build-config="$PR_YAML" \
-    --service-account="projects/$PROJECT_ID/serviceAccounts/$CLOUDBUILD_SA" \
+    --service-account="$CB_SA_RESOURCE" \
     --substitutions="_MODEL_GCS_BUCKET=${MODEL_GCS_BUCKET},_MODEL_GCS_BLOB=${MODEL_GCS_BLOB}"
 }
 
-# Execute creation
+# Run the creation process
 create_pr_trigger "${name_base}-pr"
 create_push_trigger "${name_base}-dev" "^dev$" "${service}-dev"
 create_push_trigger "${name_base}-main" "^main$" "${service}"
 
-echo "Successfully configured 2nd Gen triggers for $REPO_NAME"
+echo "2nd Gen Triggers configured successfully for $REPO_NAME in $REGION."
