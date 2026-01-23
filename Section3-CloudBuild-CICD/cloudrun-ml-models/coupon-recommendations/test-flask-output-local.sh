@@ -1,4 +1,4 @@
-curl -X POST http://127.0.0.1:5051/predict \
+curl -X POST http://127.0.0.1:8080/predict \
 -H "Content-Type: application/json" \
 -d '{
      "destination": "No Urgent Place",
