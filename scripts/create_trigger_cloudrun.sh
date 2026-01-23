@@ -12,18 +12,17 @@ set -euo pipefail
 #   image=coupon-reco
 # ==============================================================================
 
-# Automatically load project variables
+# 1. Automatically load project variables from env.common.sh
 source "$(dirname "$0")/../env.common.sh"
 
-# Parse key=value args from command line
+# 2. Parse key=value args from command line
 for arg in "$@"; do
   case "$arg" in
     *=*) export "${arg}" ;;
-    *) echo "Invalid arg: $arg (expected key=value)"; exit 1 ;;
   esac
 done
 
-# Validate required arguments
+# 3. Validate required arguments
 : "${name_base:?missing name_base}"
 : "${lab_dir:?missing lab_dir}"
 : "${service:?missing service}"
@@ -32,9 +31,12 @@ done
 
 pr_target="${pr_target:-main}"
 
-# Construct 2nd Gen Resource Paths (Required for API consistency)
+# 4. Construct 2nd Gen Resource Paths (Logic Layer)
 REPO_RESOURCE="projects/$PROJECT_ID/locations/$REGION/connections/$CONNECTION_NAME/repositories/$REPO_NAME"
-CB_SA_RESOURCE="projects/$PROJECT_ID/serviceAccounts/$CLOUDBUILD_SA"
+
+# FIX: For 2nd Gen, we use the Compute Engine Default SA in FULL RESOURCE FORMAT
+CB_SA_EMAIL="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+CB_SA_RESOURCE="projects/${PROJECT_ID}/serviceAccounts/${CB_SA_EMAIL}"
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 
@@ -46,7 +48,7 @@ COMMON_SUBS="_REGION=${REGION},_AR_REPO=${ar_repo},_IMAGE=${image}"
 
 delete_trigger_if_exists() {
   local trig_name="$1"
-  # 2nd Gen triggers are regional, so we must check within the region
+  # 2nd Gen triggers are regional
   if gcloud builds triggers describe "$trig_name" --region="$REGION" &>/dev/null; then
     echo "Deleting existing trigger '$trig_name'..."
     gcloud builds triggers delete "$trig_name" --region="$REGION" --quiet
@@ -60,8 +62,7 @@ create_push_trigger() {
 
   delete_trigger_if_exists "$trig_name"
 
-  echo "Creating Push Trigger: $trig_name"
-  # Using 'github' command with '--repository' flag is the stable 2nd Gen path
+  echo "Creating Push Trigger: $trig_name (2nd Gen)"
   gcloud builds triggers create github \
     --name="$trig_name" \
     --region="$REGION" \
@@ -78,7 +79,7 @@ create_pr_trigger() {
 
   delete_trigger_if_exists "$trig_name"
 
-  echo "Creating PR Trigger: $trig_name"
+  echo "Creating PR Trigger: $trig_name (2nd Gen)"
   gcloud builds triggers create github \
     --name="$trig_name" \
     --region="$REGION" \
@@ -89,9 +90,9 @@ create_pr_trigger() {
     --substitutions="_MODEL_GCS_BUCKET=${MODEL_GCS_BUCKET},_MODEL_GCS_BLOB=${MODEL_GCS_BLOB}"
 }
 
-# Run the creation process
+# 5. Run the creation process
 create_pr_trigger "${name_base}-pr"
 create_push_trigger "${name_base}-dev" "^dev$" "${service}-dev"
 create_push_trigger "${name_base}-main" "^main$" "${service}"
 
-echo "2nd Gen Triggers configured successfully for $REPO_NAME in $REGION."
+echo "Successfully configured 2nd Gen triggers for $REPO_NAME in $REGION."
