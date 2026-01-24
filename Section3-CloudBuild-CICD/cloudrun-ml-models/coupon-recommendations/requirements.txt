@@ -8,7 +8,7 @@ pyarrow>=15,<23
 google-cloud-bigquery>=3,<4
 scikit-learn==1.2.2
 xgboost==1.6.2
-category_encoders
+category_encoders==2.6.3
 imbalanced-learn
 requests
 google-cloud-storage

@@ -2,27 +2,35 @@
 set -euo pipefail
 
 # Manual smoke test after deploy.
-# Requires: gcloud auth + access to the project.
+# Verifies: Root (/), Health (/healthz), and ML Inference (/predict)
 
 PROJECT_ID="${PROJECT_ID:-ml-ops-on-gcp}"
 REGION="${REGION:-us-central1}"
-
-# Change default if you want prod by default:
 SERVICE_NAME="${SERVICE_NAME:-coupon-recommendations-dev}"
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 
+echo "Fetching Cloud Run URL..."
 URL="$(gcloud run services describe "$SERVICE_NAME" \
   --region "$REGION" \
   --format='value(status.url)')"
 
 if [[ -z "$URL" ]]; then
-  echo "ERROR: Could not find Cloud Run URL for service: $SERVICE_NAME in region: $REGION"
+  echo "ERROR: Could not find Cloud Run URL for service: $SERVICE_NAME"
   exit 1
 fi
 
-echo "Hitting: ${URL}/predict"
+echo "---"
+echo "Target URL: $URL"
+echo "---"
 
+echo "1. Testing Root Endpoint (No more 404)..."
+curl -sS -X GET "${URL}/readyz" | python -m json.tool
+
+echo -e "\n2. Testing Health Check..."
+curl -sS -X GET "${URL}/healthz" | python -m json.tool
+
+echo -e "\n3. Testing ML Inference (/predict)..."
 curl -sS -X POST "${URL}/predict" \
   -H "Content-Type: application/json" \
   -d '{

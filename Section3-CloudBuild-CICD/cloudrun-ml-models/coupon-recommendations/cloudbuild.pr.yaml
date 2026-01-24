@@ -2,33 +2,26 @@ substitutions:
   _PYTHON_VERSION: "3.11"
   _LAB_DIR: "Section3-CloudBuild-CICD/cloudrun-ml-models/coupon-recommendations"
   _MODEL_GCS_BUCKET: "ml-ops-on-gcp-data"
-  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.pkl"
+  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.json"
 
 steps:
   - name: "python:${_PYTHON_VERSION}"
-    id: "Unit tests (load model from GCS)"
+    id: "Unit tests"
     dir: "${_LAB_DIR}"
     entrypoint: "bash"
     args:
       - "-c"
       - |
-        set -euxo pipefail
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
-
         export MODEL_GCS_BUCKET="${_MODEL_GCS_BUCKET}"
         export MODEL_GCS_BLOB="${_MODEL_GCS_BLOB}"
-
         pytest -q
 
   - name: "gcr.io/cloud-builders/docker"
-    id: "Build image (no push)"
+    id: "Build image"
     dir: "${_LAB_DIR}"
-    args:
-      - "build"
-      - "-t"
-      - "pr-check-image"
-      - "."
+    args: ["build", "-t", "pr-check-image", "."]
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  substitution_option: ALLOW_LOOSE

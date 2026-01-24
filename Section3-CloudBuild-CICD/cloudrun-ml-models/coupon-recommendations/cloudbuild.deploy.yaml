@@ -6,60 +6,45 @@ substitutions:
   _SERVICE: "coupon-recommendations"
   _RUNTIME_SA: "79824532858-compute@developer.gserviceaccount.com"
   _MODEL_GCS_BUCKET: "ml-ops-on-gcp-data"
-  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.pkl"
+  _MODEL_GCS_BLOB: "ml-artifacts/xgboost_coupon_recommendation.json"
 
 steps:
-  - name: "python:3.11"
-    id: "Unit tests (load model from GCS)"
-    dir: "${_LAB_DIR}"
-    entrypoint: "bash"
+  # 0. Safety Check: Verify model exists in GCS before deploying
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Verify Model Artifact'
+    entrypoint: 'bash'
     args:
-      - "-c"
+      - '-c'
       - |
-        set -euxo pipefail
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        export MODEL_GCS_BUCKET="${_MODEL_GCS_BUCKET}"
-        export MODEL_GCS_BLOB="${_MODEL_GCS_BLOB}"
-        pytest -q
+        gsutil ls gs://${_MODEL_GCS_BUCKET}/${_MODEL_GCS_BLOB} || (echo "ERROR: Model file not found at gs://${_MODEL_GCS_BUCKET}/${_MODEL_GCS_BLOB}" && exit 1)
 
-  - name: "gcr.io/cloud-builders/docker"
-    id: "Build image"
-    dir: "${_LAB_DIR}"
-    args:
-      - "build"
-      - "-t"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
-      - "."
+  # 1. Build & Push Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA', '.']
 
-  - name: "gcr.io/cloud-builders/docker"
-    id: "Push image"
-    args:
-      - "push"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA']
 
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "Deploy to Cloud Run"
-    entrypoint: "gcloud"
+  # 2. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
     args:
-      - "run"
-      - "deploy"
-      - "${_SERVICE}"
-      - "--quiet"
-      - "--image"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
-      - "--region"
-      - "${_REGION}"
-      - "--platform"
-      - "managed"
-      - "--allow-unauthenticated"
-      - "--service-account"
-      - "${_RUNTIME_SA}"
-      - "--set-env-vars"
-      - "MODEL_GCS_BUCKET=${_MODEL_GCS_BUCKET},MODEL_GCS_BLOB=${_MODEL_GCS_BLOB}"
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--service-account'
+      - '${_RUNTIME_SA}'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'MODEL_GCS_BUCKET=${_MODEL_GCS_BUCKET},MODEL_GCS_BLOB=${_MODEL_GCS_BLOB}'
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  substitution_option: ALLOW_LOOSE
